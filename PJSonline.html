@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+	<meta charset="utf-8">
+	<title>Processing-JS</title>
+	<link  href="https://cdn.jsdelivr.net/npm/codemirror@5.33.0/lib/codemirror.css" rel="stylesheet">
+	<script src="https://cdn.jsdelivr.net/npm/codemirror@5.33.0/lib/codemirror.js"></script> 
+	<script src="https://cdn.jsdelivr.net/npm/codemirror@5.33.0/mode/clike/clike.js"></script>
+	<script src="https://cdn.jsdelivr.net/processing.js/1.4.8/processing.min.js"></script>
+	<style>
+	html { background-color:#f7f7ff; background-image:url("misc/fond.png"); margin-top:10px; }
+	article { margin-top:30px; }
+	button { margin-top:0px; }
+	div.travail { float:left; width:55%; }
+	div.CodeMirror { border-color:#000; border-style:solid; border-width:1px; font-size:14pt; resize:vertical; }
+	div.reponses { float:left; font-size:12pt; margin-left:1%; padding-left:1%; width:41%; }
+	#sortie { height:auto; font-weight:bold; margin-top:0; }
+	#sortie:empty { margin-bottom:0; }
+	#erreur { background-color:#fcc; color:#880000; font-size:10pt; font-weight:bold; height:20px; margin:10px 0 10px 0; padding:10px 0 10px 10px; }
+	</style>
+</head>
+<body>
+<article>
+	<div class="travail" id="travail">
+		<textarea id="code"></textarea>
+		<pre id="erreur"></pre>
+		<button type="button" onclick="executer()" id="execfb">Exécuter</button>
+		<button type="button" onclick="arreter()" id="arretfb" style="float: right; right: 3%;">Arrêter</button> 
+	</div>
+	<div class="reponses" id="resultat" style="visibility:visible">
+		<div id="dessin">
+			<canvas id="sketch" width="512" height="512"></canvas>
+		</div>
+		<pre id="sortie" style="font-size: 14pt;"></pre>
+	</div>
+</article>
+<script>
+// ajout du mode processing
+//   reprise du code de clike.js : CodeMirror, copyright (c) by Marijn Haverbeke
+//   and others distributed under an MIT license: https://codemirror.net/LICENSE
+{
+    function words(str) {
+        var obj = {}, words = str.split(" ");
+        for (var i = 0; i < words.length; ++i) obj[words[i]] = true;
+        return obj;
+    }
+    function contains(words, word) {
+        if (typeof words === "function") {
+            return words(word);
+        } else {
+            return words.propertyIsEnumerable(word);
+        }
+    }
+    function def(mimes, mode) {
+        if (typeof mimes == "string") mimes = [mimes];
+        var words = [];
+        function add(obj) {
+            if (obj) for (var prop in obj) if (obj.hasOwnProperty(prop))
+                words.push(prop);
+            }
+        add(mode.keywords);
+        add(mode.types);
+        add(mode.builtin);
+        add(mode.atoms);
+        if (words.length) {
+            mode.helperType = mimes[0];
+            CodeMirror.registerHelper("hintWords", mimes[0], words);
+        }
+        for (var i = 0; i < mimes.length; ++i)
+            CodeMirror.defineMIME(mimes[i], mode);
+    }
+    def("processing", {
+        name: "clike",
+        keywords: words("abstract assert break case catch class const continue default " +
+                        "do else enum extends final finally for goto if implements import " +  // float
+                        "instanceof interface native new package private protected public " +
+                        "return static strictfp super switch synchronized this throw throws transient " +
+                        "try volatile while @interface " +
+                        // fonctions processing
+                        "draw exit loop noLoop popStyle redraw setup size cursor frameRate noCursor " +
+                        "binary boolean byte hex str unbinary unhex join match matchAll " + // char float int
+                        "nf nfc nfp nfs split splitTokens trim append arrayCopy concat expand reverse " +
+                        "shorten sort splice subset arc ellipse line point quad rect triangle bezier " +
+                        "bezierDetail bezierPoint bezierTangent curve curveDetail curvePoint curveTangent " +
+                        "curveTightness box sphere sphereDetail ellipseMode noSmooth rectMode smooth " +
+                        "strokeCap strokeJoin strokeWeight beginShape bezierVertex curveVertex endShape " +
+                        "texture textureMode vertex loadShape shape shapeMode mouseClicked mouseDragged " +
+                        "mouseMoved mouseOut mouseOver mousePressed mouseReleased keyPressed keyReleased " +
+                        "keyTyped loadBytes loadStrings link status day hour millis minute month second year " +
+                        "print println save saveFrame saveStrings applyMatrix popMatrix printMatrix pushMatrix " +
+                        "resetMatrix rotate rotateX rotateY rotateZ scale translate ambientLight directionalLight " +
+                        "lightFalloff lightSpecular lights noLights normal pointLight spotLight beginCamera " + 
+                        "camera endCamera frustum ortho perspective printCamera printProjection modelX modelY " +
+                        "modelZ screenX screenY screenZ ambient emissive shininess specular background colorMode " +
+                        "fill noFill noStroke stroke alpha blendColor blue brightness color green hue lerpColor " +
+                        "red saturation createImage image imageMode loadImage noTint requestImage tint blend copy " +
+                        "filter get loadPixels set updatePixels createGraphics hint createFont loadFont text " +
+                        "textFont textAlign textLeading textMode textSize textWidth textAscent textDescent abs " +
+                        "ceil constrain dist exp floor lerp log mag map max min norm pow round sq sqrt acos asin " +
+                        "atan atan2 cos degrees radians sin tan noise noiseDetail noiseSeed random randomSeed " +
+                        // variables processing
+                        "color focused frameCount frameRate height online screen width Curves mouseButton " +
+                        "mousePressed mouseX mouseY pmouseX pmouseY key keyCode keyPressed " +
+                        // tableaux processing
+                        "pixels"),
+        types: words("byte short int long float double boolean char void Boolean Byte Character Double Float " +
+                     "Integer Long Number Object Short String StringBuffer StringBuilder Void " +
+                     // types processing
+                     "Array ArrayList HashMap Object String XMLElement PShape PImage PGraphics PFont PVector"),
+        blockKeywords: words("catch class do else finally for if switch try while"),
+        defKeywords: words("class interface enum @interface"),
+        typeFirstDefinitions: true,
+        atoms: words("true false null"),
+        number: /^(?:0x[a-f\d_]+|0b[01_]+|(?:[\d_]+\.?\d*|\.\d+)(?:e[-+]?[\d_]+)?)(u|ll?|l|f)?/i,
+        hooks: {
+            "@": function(stream) {
+                     // Don't match the @interface keyword.
+                     if (stream.match('interface', false)) return false;
+                     stream.eatWhile(/[\w\$_]/);
+                     return "meta";
+                 },
+            "#": function(stream) {
+                     // Match the #15a9c8 color format.
+                     if (!stream.match(/[a-f\d]{6}/i)) return false;
+                     return "number";
+                 }
+        },
+        modeProps: {fold: ["brace", "import"]}
+    })
+}
+// configuration de l'editeur de texte CodeMirror
+CodeMirror.keyMap.default.Tab = function(cm) { cm.execCommand(cm.getOption("indentWithTabs") ? "insertTab" : "insertSoftTab"); };
+var editeur = CodeMirror.fromTextArea(document.getElementById("code"), { mode: "processing", lineNumbers: true, indentWithTabs: false, indentUnit: 4, tabSize: 4 });
+var hauteurEditeur = document.documentElement.clientHeight - document.getElementById("travail").offsetTop - 120;
+editeur.setSize(null, hauteurEditeur === undefined ? 560 : hauteurEditeur);
+// redirection des fonctions de sorties (println, print et log)
+function print(msg) {
+	document.getElementById("sortie").innerHTML += msg;
+}
+function println(msg) {
+	document.getElementById("sortie").innerHTML += msg + "\n";
+}
+Processing.logger.log = print;
+Processing.logger.print = print;
+Processing.logger.println = println;
+// fonctions attachees aux boutons
+var pjs = null;
+function executer() {
+	arreter();
+	var programme = editeur.getValue()+"\n";
+	document.getElementById("erreur").innerHTML = "";
+	document.getElementById("sortie").innerHTML = "";
+	try {
+		var codejs = Processing.compile(programme);
+		var sketch = document.getElementById("sketch");
+		pjs = new Processing(sketch, codejs);
+	} catch (e) {
+		document.getElementById("erreur").innerHTML = "Erreur : " + e.toString();
+	}
+}
+function arreter() {
+	if (pjs == null) return;
+	pjs.exit();
+	pjs = null;
+}
+</script>
+</body>
+</html>
