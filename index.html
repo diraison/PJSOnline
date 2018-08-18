@@ -29,7 +29,7 @@
 	</div>
 	<div class="reponses" id="resultat" style="visibility:visible">
 		<div id="dessin">
-			<canvas id="sketch" width="512" height="512"></canvas>
+			<canvas id="sketch" width="256" height="0"></canvas>
 		</div>
 		<pre id="sortie" style="font-size: 14pt;"></pre>
 	</div>
@@ -150,6 +150,8 @@ function executer() {
 	var programme = editeur.getValue()+"\n";
 	document.getElementById("erreur").innerHTML = "";
 	document.getElementById("sortie").innerHTML = "";
+	document.getElementById("sketch").width = 256;
+	document.getElementById("sketch").height = 0;
 	try {
 		var codejs = Processing.compile(programme);
 		var sketch = document.getElementById("sketch");
